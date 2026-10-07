@@ -1,8 +1,11 @@
 <?php
 /**
  * Plugin Name: WooCommerce Repeat Purchase Detector
+ * Plugin URI: https://github.com/coderjahidul/woocommerce-repeat-purchase-detector
  * Description: Shows a red or purple dot on the orders list when the same billing phone orders again within 10 days.
  * Version: 1.0.0
+ * Author: Grocoder Software Solutions
+ * Author URI: https://grocoder.net
  * Requires at least: 6.2
  * Requires PHP: 7.4
  * Requires Plugins: woocommerce
