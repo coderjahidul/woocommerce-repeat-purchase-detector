@@ -471,6 +471,7 @@ class WRPD_Detector {
 				'name'    => $item->get_name(),
 				'qty'     => (int) $item->get_quantity(),
 				'sku'     => $sku ? $sku : '',
+				'image'   => self::product_image_url( $product ),
 				'matched' => isset( $lookup[ (int) $item->get_product_id() ] ),
 			);
 		}
@@ -489,10 +490,42 @@ class WRPD_Detector {
 			'customer' => array(
 				'name'    => $order->get_formatted_billing_full_name(),
 				'phone'   => $order->get_billing_phone(),
-				'email'   => $order->get_billing_email(),
 				'address' => $address,
 			),
 			'products' => $products,
 		);
+	}
+
+	/**
+	 * Thumbnail URL for a line-item product, with variation and placeholder fallbacks.
+	 *
+	 * @param WC_Product|false|null $product Product from the line item.
+	 * @return string
+	 */
+	private static function product_image_url( $product ) {
+		if ( $product instanceof WC_Product ) {
+			$image_id = (int) $product->get_image_id();
+			if ( $image_id ) {
+				$url = wp_get_attachment_image_url( $image_id, 'thumbnail' );
+				if ( $url ) {
+					return $url;
+				}
+			}
+
+			if ( $product->is_type( 'variation' ) ) {
+				$parent = wc_get_product( $product->get_parent_id() );
+				if ( $parent instanceof WC_Product ) {
+					$image_id = (int) $parent->get_image_id();
+					if ( $image_id ) {
+						$url = wp_get_attachment_image_url( $image_id, 'thumbnail' );
+						if ( $url ) {
+							return $url;
+						}
+					}
+				}
+			}
+		}
+
+		return function_exists( 'wc_placeholder_img_src' ) ? (string) wc_placeholder_img_src( 'thumbnail' ) : '';
 	}
 }

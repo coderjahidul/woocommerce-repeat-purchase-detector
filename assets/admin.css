@@ -1,16 +1,22 @@
-.column-wrpd_repeat {
+.wp-list-table .column-wrpd_repeat,
+.wp-list-table th.column-wrpd_repeat,
+.wp-list-table td.column-wrpd_repeat {
 	width: 9rem;
-	text-align: center;
+	text-align: center !important;
+}
+
+.wp-list-table td.column-wrpd_repeat {
+	vertical-align: middle;
 }
 
 .wrpd-dot {
 	width: 14px;
 	height: 14px;
 	padding: 0;
+	margin: 0 auto;
 	border: 0;
 	border-radius: 50%;
-	display: inline-block;
-	vertical-align: middle;
+	display: block;
 	cursor: pointer;
 	box-shadow: 0 0 0 2px #fff, 0 0 0 3px rgba(0, 0, 0, 0.12);
 }
@@ -180,13 +186,27 @@
 	text-align: left;
 	padding: 6px 8px;
 	border-bottom: 1px solid #f0f0f1;
-	vertical-align: top;
+	vertical-align: middle;
 }
 
 .wrpd-products th {
 	font-size: 12px;
 	color: #646970;
 	font-weight: 600;
+}
+
+.wrpd-products .wrpd-product-image {
+	width: 48px;
+	padding-right: 4px;
+}
+
+.wrpd-products .wrpd-product-image img {
+	display: block;
+	width: 40px;
+	height: 40px;
+	object-fit: cover;
+	border-radius: 4px;
+	background: #f0f0f1;
 }
 
 .wrpd-match {

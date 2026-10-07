@@ -199,7 +199,6 @@
 		list.className = 'wrpd-customer';
 		addPair(list, wrpdAdmin.i18n.name, customer.name);
 		addPair(list, wrpdAdmin.i18n.phone, customer.phone);
-		addPair(list, wrpdAdmin.i18n.email, customer.email);
 		addPair(list, wrpdAdmin.i18n.address, customer.address);
 		return list;
 	}
@@ -219,7 +218,7 @@
 
 		var head = document.createElement('thead');
 		var headRow = document.createElement('tr');
-		[wrpdAdmin.i18n.products, wrpdAdmin.i18n.sku, wrpdAdmin.i18n.qty].forEach(function (label) {
+		[wrpdAdmin.i18n.image, wrpdAdmin.i18n.products, wrpdAdmin.i18n.sku, wrpdAdmin.i18n.qty].forEach(function (label) {
 			var th = document.createElement('th');
 			th.textContent = label;
 			headRow.appendChild(th);
@@ -231,7 +230,7 @@
 		if (!products.length) {
 			var emptyRow = document.createElement('tr');
 			var emptyCell = document.createElement('td');
-			emptyCell.colSpan = 3;
+			emptyCell.colSpan = 4;
 			emptyCell.textContent = '—';
 			emptyRow.appendChild(emptyCell);
 			body.appendChild(emptyRow);
@@ -239,6 +238,20 @@
 
 		products.forEach(function (product) {
 			var row = document.createElement('tr');
+
+			var imageCell = document.createElement('td');
+			imageCell.className = 'wrpd-product-image';
+			if (product.image) {
+				var img = document.createElement('img');
+				img.src = product.image;
+				img.alt = product.name || '';
+				img.width = 40;
+				img.height = 40;
+				img.loading = 'lazy';
+				imageCell.appendChild(img);
+			} else {
+				imageCell.textContent = '—';
+			}
 
 			var nameCell = document.createElement('td');
 			nameCell.textContent = product.name || '—';
@@ -255,6 +268,7 @@
 			var qtyCell = document.createElement('td');
 			qtyCell.textContent = String(product.qty || 0);
 
+			row.appendChild(imageCell);
 			row.appendChild(nameCell);
 			row.appendChild(skuCell);
 			row.appendChild(qtyCell);
