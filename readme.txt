@@ -4,7 +4,7 @@ Tags: woocommerce, orders, repeat purchase, phone, customers
 Requires at least: 6.2
 Tested up to: 7.1
 Requires PHP: 7.4
-Stable tag: 1.0.0
+Stable tag: 1.0.1
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 WC requires at least: 8.2
@@ -28,7 +28,7 @@ The first order has no dot. Only the later order is marked. Click the dot to see
 
 Phone numbers are compared after formatting, so `017...`, `+880...`, and `880...` are treated as the same number. A different variation of the same product counts as the same product.
 
-These order statuses are counted: pending, on hold, processing, and completed. Cancelled, failed, refunded, and trashed orders are ignored.
+Cancelled, failed, refunded, trash, and draft orders are ignored. All other statuses are counted, including custom ones such as Confirmed or Shipped to SF.
 
 The plugin works with High-Performance Order Storage and with the legacy orders list.
 
@@ -76,6 +76,9 @@ They are the most recent earlier orders with the same billing phone, inside the 
 A user who can edit that shop order. The order details are loaded when the dot is clicked. They are not stored in the orders list.
 
 == Changelog ==
+
+= 1.0.1 =
+* Count custom order statuses (Confirmed, Shipped to SF, etc.) when detecting repeat purchases.
 
 = 1.0.0 =
 * First release.

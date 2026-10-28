@@ -13,11 +13,13 @@ defined( 'ABSPATH' ) || exit;
 class WRPD_Detector {
 
 	/**
-	 * Order statuses that count as a purchase.
+	 * Order statuses that do not count as a purchase.
+	 *
+	 * Custom statuses (confirmed, shipped-sf, etc.) are counted.
 	 *
 	 * @var string[]
 	 */
-	const STATUSES = array( 'pending', 'on-hold', 'processing', 'completed' );
+	const IGNORED_STATUSES = array( 'cancelled', 'failed', 'refunded', 'trash', 'checkout-draft', 'auto-draft' );
 
 	/**
 	 * Page classification cache. Null until the current list page is preloaded.
@@ -172,7 +174,7 @@ class WRPD_Detector {
 			$created  = $order->get_date_created();
 			$phone    = self::normalize_phone( $order->get_billing_phone() );
 			$ts       = $created ? $created->getTimestamp() : 0;
-			$counted  = in_array( $order->get_status(), self::STATUSES, true );
+			$counted  = self::counts_as_purchase( $order->get_status() );
 
 			$page[ $order_id ] = array(
 				'level'         => '',
@@ -289,19 +291,14 @@ class WRPD_Detector {
 	private static function query_candidates( $from_ts, $to_ts ) {
 		global $wpdb;
 
-		$from     = gmdate( 'Y-m-d H:i:s', (int) $from_ts );
-		$to       = gmdate( 'Y-m-d H:i:s', (int) $to_ts );
-		$statuses = array_map(
-			static function ( $status ) {
-				return 'wc-' . $status;
-			},
-			self::STATUSES
-		);
+		$from    = gmdate( 'Y-m-d H:i:s', (int) $from_ts );
+		$to      = gmdate( 'Y-m-d H:i:s', (int) $to_ts );
+		$ignored = self::ignored_status_sql_values();
 
 		if ( class_exists( \Automattic\WooCommerce\Utilities\OrderUtil::class ) && \Automattic\WooCommerce\Utilities\OrderUtil::custom_orders_table_usage_is_enabled() ) {
-			$rows = self::query_hpos_candidates( $statuses, $from, $to );
+			$rows = self::query_hpos_candidates( $ignored, $from, $to );
 		} else {
-			$rows = self::query_legacy_candidates( $statuses, $from, $to );
+			$rows = self::query_legacy_candidates( $ignored, $from, $to );
 		}
 
 		$candidates = array();
@@ -327,32 +324,62 @@ class WRPD_Detector {
 	}
 
 	/**
+	 * Whether an order status should count toward repeat-purchase matching.
+	 *
+	 * @param string $status Status from WC_Order::get_status() (no wc- prefix).
+	 * @return bool
+	 */
+	public static function counts_as_purchase( $status ) {
+		$status = (string) $status;
+		if ( 0 === strpos( $status, 'wc-' ) ) {
+			$status = substr( $status, 3 );
+		}
+
+		return '' !== $status && ! in_array( $status, self::IGNORED_STATUSES, true );
+	}
+
+	/**
+	 * Status values stored in the database for ignored orders (with and without wc-).
+	 *
+	 * @return string[]
+	 */
+	private static function ignored_status_sql_values() {
+		$values = array();
+		foreach ( self::IGNORED_STATUSES as $status ) {
+			$values[] = $status;
+			$values[] = 'wc-' . $status;
+		}
+
+		return array_values( array_unique( $values ) );
+	}
+
+	/**
 	 * Candidate rows from the HPOS orders and address tables.
 	 *
-	 * @param string[] $statuses Prefixed statuses.
-	 * @param string   $from     GMT datetime.
-	 * @param string   $to       GMT datetime.
+	 * @param string[] $ignored Prefixed and bare ignored statuses.
+	 * @param string   $from    GMT datetime.
+	 * @param string   $to      GMT datetime.
 	 * @return array<int, array<string, string>>
 	 */
-	private static function query_hpos_candidates( array $statuses, $from, $to ) {
+	private static function query_hpos_candidates( array $ignored, $from, $to ) {
 		global $wpdb;
 
 		$orders    = \Automattic\WooCommerce\Internal\DataStores\Orders\OrdersTableDataStore::get_orders_table_name();
 		$addresses = \Automattic\WooCommerce\Internal\DataStores\Orders\OrdersTableDataStore::get_addresses_table_name();
-		$in        = implode( ',', array_fill( 0, count( $statuses ), '%s' ) );
+		$not_in    = implode( ',', array_fill( 0, count( $ignored ), '%s' ) );
 
 		// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- table names are WooCommerce internals; placeholders cover values.
 		$sql = "SELECT o.id, o.date_created_gmt, a.phone
 			FROM {$orders} o
 			INNER JOIN {$addresses} a ON a.order_id = o.id AND a.address_type = 'billing'
 			WHERE o.type = 'shop_order'
-			AND o.status IN ({$in})
+			AND o.status NOT IN ({$not_in})
 			AND o.date_created_gmt >= %s
 			AND o.date_created_gmt <= %s
 			AND a.phone IS NOT NULL
 			AND a.phone != ''";
 
-		$params = array_merge( $statuses, array( $from, $to ) );
+		$params = array_merge( $ignored, array( $from, $to ) );
 		// phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared -- prepared on the next line.
 		$prepared = $wpdb->prepare( $sql, $params );
 
@@ -365,27 +392,27 @@ class WRPD_Detector {
 	/**
 	 * Candidate rows from posts and post meta when HPOS is off.
 	 *
-	 * @param string[] $statuses Prefixed statuses.
-	 * @param string   $from     GMT datetime.
-	 * @param string   $to       GMT datetime.
+	 * @param string[] $ignored Prefixed and bare ignored statuses.
+	 * @param string   $from    GMT datetime.
+	 * @param string   $to      GMT datetime.
 	 * @return array<int, array<string, string>>
 	 */
-	private static function query_legacy_candidates( array $statuses, $from, $to ) {
+	private static function query_legacy_candidates( array $ignored, $from, $to ) {
 		global $wpdb;
 
-		$in = implode( ',', array_fill( 0, count( $statuses ), '%s' ) );
+		$not_in = implode( ',', array_fill( 0, count( $ignored ), '%s' ) );
 
 		// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- placeholders cover values.
 		$sql = "SELECT p.ID AS id, p.post_date_gmt AS date_created_gmt, pm.meta_value AS phone
 			FROM {$wpdb->posts} p
 			INNER JOIN {$wpdb->postmeta} pm ON pm.post_id = p.ID AND pm.meta_key = '_billing_phone'
 			WHERE p.post_type = 'shop_order'
-			AND p.post_status IN ({$in})
+			AND p.post_status NOT IN ({$not_in})
 			AND p.post_date_gmt >= %s
 			AND p.post_date_gmt <= %s
 			AND pm.meta_value != ''";
 
-		$params = array_merge( $statuses, array( $from, $to ) );
+		$params = array_merge( $ignored, array( $from, $to ) );
 		// phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
 		$prepared = $wpdb->prepare( $sql, $params );
 

@@ -19,7 +19,7 @@ The first order has no dot. Later orders do. Phone numbers such as `017...`, `+8
 
 Click a dot to open the earlier orders: order number (with copy), customer name, phone, email, billing address, and products. Matching products are marked.
 
-Cancelled, failed, refunded, and trashed orders are ignored. Pending, on-hold, processing, and completed orders are counted.
+Cancelled, failed, refunded, trash, and draft orders are ignored. All other statuses count — including custom ones such as Confirmed or Shipped to SF.
 
 ## Settings
 
